@@ -17,7 +17,7 @@ jobs:
         python-version: '3.9'
         
     - name: Install dependencies
-      run: pip install pandas scikit-learn joblib numpy
+      run: pip install pandas scikit-learn joblib numpy openpyxl
       
     - name: Run MLOps Pipeline
       run: |
@@ -31,7 +31,7 @@ jobs:
         print(' MLOps Pipeline Started')
         
         # Load and process data
-        df = pd.read_csv('sample_bank_data.csv')
+        df = pd.read_excel('large_bank_data.xlsm')
         df['age_loan_ratio'] = df['age'] / (df['loan_status'] + 1e-6)
         
         # Train model

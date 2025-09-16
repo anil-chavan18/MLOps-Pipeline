@@ -49,21 +49,18 @@ jobs:
         # Save model
         joblib.dump(model, 'model.pkl')
         
-        # Make sample predictions
-        print('\n🔮 Sample Predictions:')
-        sample_customers = [
-            [35, 2500, 1, 2, 35.0],  # age, balance, loan_status, campaign_calls, age_loan_ratio
-            [45, 1500, 0, 3, 45.0],
-            [55, 4000, 1, 1, 55.0]
-        ]
+        # Make predictions on real data samples
+        print('\n Real Customer Predictions:')
+        sample_data = X_test.head(3)  # Use first 3 test samples
         
-        for i, customer in enumerate(sample_customers, 1):
+        for i, (idx, customer) in enumerate(sample_data.iterrows(), 1):
             prediction = model.predict([customer])[0]
             probability = model.predict_proba([customer])[0][1]
             result = 'Will Subscribe' if prediction == 1 else 'Will Not Subscribe'
-            print(f'   Customer {i}: {result} (Confidence: {probability:.2f})')
+            actual = 'Actually Subscribed' if y_test.iloc[i-1] == 1 else 'Actually Did Not Subscribe'
+            print(f'   Customer {idx}: {result} (Confidence: {probability:.2f}) - {actual}')
         
-        print('\n✅ Pipeline Complete!')
+        print('\n Pipeline Complete!')
         "
         
     - name: Upload model

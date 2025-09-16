@@ -2,7 +2,7 @@
 
 This repository contains a complete MLOps pipeline for predicting customer term deposit subscriptions using machine learning.
 
-## 🚀 Pipeline Overview
+## Pipeline Overview
 
 The pipeline implements all 8 essential MLOps steps:
 
@@ -15,7 +15,7 @@ The pipeline implements all 8 essential MLOps steps:
 7. **Model Validation**: Validate model quality and explainability
 8. **Model Registration**: Register model if it meets thresholds
 
-## 📁 Repository Structure
+## Repository Structure
 
 ```
 MLOps-Pipeline/
@@ -30,7 +30,7 @@ MLOps-Pipeline/
 └── README.md                       # This file
 ```
 
-## 🔧 Setup Instructions
+## Setup Instructions
 
 ### Local Development
 
@@ -71,29 +71,29 @@ MLOps-Pipeline/
    - Click "Run workflow"
    - Optionally set custom accuracy threshold
 
-## 📊 Pipeline Features
+## Pipeline Features
 
 ### Data Processing & Validation
-- ✅ Automated data quality checks
-- ✅ Bias detection across age groups
-- ✅ Feature engineering (age_loan_ratio)
-- ✅ Data validation with quality thresholds
+- Automated data quality checks
+- Bias detection across age groups
+- Feature engineering (age_loan_ratio)
+- Data validation with quality thresholds
 
 ### Model Training & Validation
-- ✅ Logistic Regression with scikit-learn
-- ✅ 80/20 train-test split
-- ✅ Comprehensive metrics (accuracy, precision, recall, F1)
-- ✅ Feature importance analysis
-- ✅ Configurable accuracy threshold (default: 85%)
+- Logistic Regression with scikit-learn
+- 80/20 train-test split
+- Comprehensive metrics (accuracy, precision, recall, F1)
+- Feature importance analysis
+- Configurable accuracy threshold (default: 85%)
 
 ### MLOps Best Practices
-- ✅ Automated pipeline execution
-- ✅ Artifact management
-- ✅ Model versioning
-- ✅ Quality gates
-- ✅ Explainable AI features
+- Automated pipeline execution
+- Artifact management
+- Model versioning
+- Quality gates
+- Explainable AI features
 
-## 🎯 Expected Outputs
+## Expected Outputs
 
 ### Pipeline Results
 - **Features Stored**: age, balance, loan_status, campaign_calls, age_loan_ratio
@@ -106,7 +106,7 @@ MLOps-Pipeline/
 - `model-artifacts`: Trained model files (.pkl)
 - `pipeline-summary`: Execution summary and metrics
 
-## 🔄 Workflow Triggers
+##  Workflow Triggers
 
 ### Automatic Triggers
 ```yaml
@@ -133,7 +133,7 @@ workflow_dispatch:
       default: '0.85'
 ```
 
-## 📈 Monitoring & Observability
+## Monitoring & Observability
 
 ### Pipeline Status
 - View execution status in GitHub Actions tab
@@ -147,7 +147,7 @@ workflow_dispatch:
 - Bias analysis across demographics
 - Data quality scores
 
-## 🚀 Deployment Options
+## Deployment Options
 
 ### Local Deployment
 ```bash
@@ -168,7 +168,7 @@ kubectl apply -f k8s-pipeline-job.yaml
 kubectl create -f term-deposit-pipeline.yaml
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 - `MODEL_THRESHOLD`: Accuracy threshold for model registration (default: 0.85)
@@ -179,7 +179,7 @@ kubectl create -f term-deposit-pipeline.yaml
 - Update `requirements.txt` for additional dependencies
 - Adjust thresholds in GitHub Actions workflow
 
-## 📝 Use Case Details
+## Use Case Details
 
 **Objective**: Predict whether a customer will subscribe to a term deposit
 
@@ -193,7 +193,7 @@ kubectl create -f term-deposit-pipeline.yaml
 
 **Model**: Logistic Regression with feature engineering
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -203,10 +203,10 @@ kubectl create -f term-deposit-pipeline.yaml
 
 The GitHub Actions pipeline will automatically validate your changes!
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
 ---
 
-🎉 **Ready to run your automated MLOps pipeline!** Push your code to GitHub and watch the magic happen!
+**Ready to run your automated MLOps pipeline!** Push your code to GitHub and watch the magic happen!

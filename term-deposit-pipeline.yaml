@@ -1,0 +1,352 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: term-deposit-prediction-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18, pipelines.kubeflow.org/pipeline_compilation_time: '2025-09-16T16:45:41.369894',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "A pipeline to predict
+      customer subscription with MLflow tracking.", "inputs": [{"default": "http://localhost:5000",
+      "name": "mlflow_tracking_uri", "optional": true, "type": "String"}], "name":
+      "Term Deposit Prediction Pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.18}
+spec:
+  entrypoint: term-deposit-prediction-pipeline
+  templates:
+  - name: data-preparation
+    container:
+      args: ['----output-paths', /tmp/outputs/Output/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def data_preparation():
+            """
+            This component handles data ingestion, cleaning, and pre-processing.
+            It takes a raw Excel file as input and outputs a cleaned CSV artifact.
+            """
+            import pandas as pd
+
+            print("Starting data preparation...")
+            # Step 1: Data Ingestion is handled by the pipeline passing this file to the container.
+            # The 'pandas.read_excel' function automatically handles .xlsx and .xlsm files.
+            df = pd.read_excel('/app/large_bank_data.xlsm')
+
+            # Data cleaning
+            df.dropna(inplace=True)
+
+            # Step 3: Feature Engineering
+            # We create a new, potentially useful feature from existing data.
+            df['age_loan_ratio'] = df['age'] / (df['loan_status'] + 1e-6)
+
+            # Save the prepared data to the output path provided by Kubeflow
+            output_path = '/tmp/processed_data.csv'
+            df.to_csv(output_path, index=False)
+            print("Data preparation and feature engineering complete.")
+            return output_path
+
+        def _serialize_str(str_value: str) -> str:
+            if not isinstance(str_value, str):
+                raise TypeError('Value "{}" has type "{}" instead of str.'.format(
+                    str(str_value), str(type(str_value))))
+            return str_value
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Data preparation', description='This component handles data ingestion, cleaning, and pre-processing.')
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = data_preparation(**_parsed_args)
+
+        _outputs = [_outputs]
+
+        _output_serializers = [
+            _serialize_str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: mlops-pipeline:latest
+    outputs:
+      parameters:
+      - name: data-preparation-Output
+        valueFrom: {path: /tmp/outputs/Output/data}
+      artifacts:
+      - {name: data-preparation-Output, path: /tmp/outputs/Output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.18
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "This
+          component handles data ingestion, cleaning, and pre-processing.", "implementation":
+          {"container": {"args": ["----output-paths", {"outputPath": "Output"}], "command":
+          ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def data_preparation():\n    \"\"\"\n    This
+          component handles data ingestion, cleaning, and pre-processing.\n    It
+          takes a raw Excel file as input and outputs a cleaned CSV artifact.\n    \"\"\"\n    import
+          pandas as pd\n\n    print(\"Starting data preparation...\")\n    # Step
+          1: Data Ingestion is handled by the pipeline passing this file to the container.\n    #
+          The ''pandas.read_excel'' function automatically handles .xlsx and .xlsm
+          files.\n    df = pd.read_excel(''/app/large_bank_data.xlsm'')\n\n    # Data
+          cleaning\n    df.dropna(inplace=True)\n\n    # Step 3: Feature Engineering\n    #
+          We create a new, potentially useful feature from existing data.\n    df[''age_loan_ratio'']
+          = df[''age''] / (df[''loan_status''] + 1e-6)\n\n    # Save the prepared
+          data to the output path provided by Kubeflow\n    output_path = ''/tmp/processed_data.csv''\n    df.to_csv(output_path,
+          index=False)\n    print(\"Data preparation and feature engineering complete.\")\n    return
+          output_path\n\ndef _serialize_str(str_value: str) -> str:\n    if not isinstance(str_value,
+          str):\n        raise TypeError(''Value \"{}\" has type \"{}\" instead of
+          str.''.format(\n            str(str_value), str(type(str_value))))\n    return
+          str_value\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Data
+          preparation'', description=''This component handles data ingestion, cleaning,
+          and pre-processing.'')\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = data_preparation(**_parsed_args)\n\n_outputs
+          = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport
+          os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "mlops-pipeline:latest"}}, "name": "Data preparation", "outputs":
+          [{"name": "Output", "type": "String"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: model-training
+    container:
+      args: [--data-path, '{{inputs.parameters.data-preparation-Output}}', --mlflow-tracking-uri,
+        '{{inputs.parameters.mlflow_tracking_uri}}', '----output-paths', /tmp/outputs/Output/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def model_training(data_path, mlflow_tracking_uri):
+            """
+            This component trains the model and logs the experiment to MLflow.
+            It takes the pre-processed data and an MLflow URI as input.
+            """
+            import pandas as pd
+            from sklearn.model_selection import train_test_split
+            from sklearn.linear_model import LogisticRegression
+            import mlflow
+            import mlflow.sklearn
+            import joblib
+
+            print("Starting model training...")
+            # Step 6: Logging and Tracking - Set the connection to the MLflow server.
+            mlflow.set_tracking_uri(mlflow_tracking_uri)
+            mlflow.set_experiment("Term Deposit Prediction")
+
+            # Start an MLflow run to log all aspects of this training session.
+            with mlflow.start_run() as run:
+                df = pd.read_csv(data_path)
+                X = df[['age', 'balance', 'loan_status', 'campaign_calls']]
+                y = df['target']
+                X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+                # Log model parameters
+                mlflow.log_param("model_type", "LogisticRegression")
+                mlflow.log_param("train_split", 0.8)
+
+                # Train the model
+                model = LogisticRegression(max_iter=1000)
+                model.fit(X_train, y_train)
+
+                # Log the trained model and save it as a local artifact
+                mlflow.sklearn.log_model(model, "logistic-regression-model")
+                model_path = '/tmp/model.pkl'
+                joblib.dump(model, model_path)
+
+                print(f"Model trained and logged to MLflow run: {run.info.run_id}")
+                return model_path
+
+        def _serialize_str(str_value: str) -> str:
+            if not isinstance(str_value, str):
+                raise TypeError('Value "{}" has type "{}" instead of str.'.format(
+                    str(str_value), str(type(str_value))))
+            return str_value
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Model training', description='This component trains the model and logs the experiment to MLflow.')
+        _parser.add_argument("--data-path", dest="data_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--mlflow-tracking-uri", dest="mlflow_tracking_uri", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = model_training(**_parsed_args)
+
+        _outputs = [_outputs]
+
+        _output_serializers = [
+            _serialize_str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: mlops-pipeline:latest
+    inputs:
+      parameters:
+      - {name: data-preparation-Output}
+      - {name: mlflow_tracking_uri}
+    outputs:
+      parameters:
+      - name: model-training-Output
+        valueFrom: {path: /tmp/outputs/Output/data}
+      artifacts:
+      - {name: model-training-Output, path: /tmp/outputs/Output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.18
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "This
+          component trains the model and logs the experiment to MLflow.", "implementation":
+          {"container": {"args": ["--data-path", {"inputValue": "data_path"}, "--mlflow-tracking-uri",
+          {"inputValue": "mlflow_tracking_uri"}, "----output-paths", {"outputPath":
+          "Output"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\"
+          \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def
+          model_training(data_path, mlflow_tracking_uri):\n    \"\"\"\n    This component
+          trains the model and logs the experiment to MLflow.\n    It takes the pre-processed
+          data and an MLflow URI as input.\n    \"\"\"\n    import pandas as pd\n    from
+          sklearn.model_selection import train_test_split\n    from sklearn.linear_model
+          import LogisticRegression\n    import mlflow\n    import mlflow.sklearn\n    import
+          joblib\n\n    print(\"Starting model training...\")\n    # Step 6: Logging
+          and Tracking - Set the connection to the MLflow server.\n    mlflow.set_tracking_uri(mlflow_tracking_uri)\n    mlflow.set_experiment(\"Term
+          Deposit Prediction\")\n\n    # Start an MLflow run to log all aspects of
+          this training session.\n    with mlflow.start_run() as run:\n        df
+          = pd.read_csv(data_path)\n        X = df[[''age'', ''balance'', ''loan_status'',
+          ''campaign_calls'']]\n        y = df[''target'']\n        X_train, X_test,
+          y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n\n        #
+          Log model parameters\n        mlflow.log_param(\"model_type\", \"LogisticRegression\")\n        mlflow.log_param(\"train_split\",
+          0.8)\n\n        # Train the model\n        model = LogisticRegression(max_iter=1000)\n        model.fit(X_train,
+          y_train)\n\n        # Log the trained model and save it as a local artifact\n        mlflow.sklearn.log_model(model,
+          \"logistic-regression-model\")\n        model_path = ''/tmp/model.pkl''\n        joblib.dump(model,
+          model_path)\n\n        print(f\"Model trained and logged to MLflow run:
+          {run.info.run_id}\")\n        return model_path\n\ndef _serialize_str(str_value:
+          str) -> str:\n    if not isinstance(str_value, str):\n        raise TypeError(''Value
+          \"{}\" has type \"{}\" instead of str.''.format(\n            str(str_value),
+          str(type(str_value))))\n    return str_value\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Model training'', description=''This component
+          trains the model and logs the experiment to MLflow.'')\n_parser.add_argument(\"--data-path\",
+          dest=\"data_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--mlflow-tracking-uri\",
+          dest=\"mlflow_tracking_uri\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+          dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = model_training(**_parsed_args)\n\n_outputs
+          = [_outputs]\n\n_output_serializers = [\n    _serialize_str,\n\n]\n\nimport
+          os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "mlops-pipeline:latest"}}, "inputs": [{"name": "data_path", "type":
+          "String"}, {"name": "mlflow_tracking_uri", "type": "String"}], "name": "Model
+          training", "outputs": [{"name": "Output", "type": "String"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"data_path": "{{inputs.parameters.data-preparation-Output}}",
+          "mlflow_tracking_uri": "{{inputs.parameters.mlflow_tracking_uri}}"}'}
+  - name: model-validation
+    container:
+      args: [--model-path, '{{inputs.parameters.model-training-Output}}', --data-path,
+        '{{inputs.parameters.data-preparation-Output}}']
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def model_validation(model_path, data_path):\n    \"\"\"\n    This component\
+        \ loads the model and evaluates its performance.\n    It prints the accuracy\
+        \ and logs it as a metric to MLflow.\n    \"\"\"\n    import pandas as pd\n\
+        \    from sklearn.model_selection import train_test_split\n    from sklearn.metrics\
+        \ import accuracy_score\n    import joblib\n    import mlflow\n    import\
+        \ os\n\n    print(\"Starting model validation...\")\n    model = joblib.load(model_path)\n\
+        \    df = pd.read_csv(data_path)\n\n    X = df[['age', 'balance', 'loan_status',\
+        \ 'campaign_calls']]\n    y = df['target']\n\n    X_train, X_test, y_train,\
+        \ y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n\n    y_pred\
+        \ = model.predict(X_test)\n    accuracy = accuracy_score(y_test, y_pred)\n\
+        \n    # Report the final accuracy.\n    print(f\"Model Accuracy: {accuracy:.4f}\"\
+        )\n    if accuracy >= 0.85:\n        print(\"Model meets the 85% accuracy\
+        \ threshold. \U0001F389\")\n    else:\n        print(\"Model accuracy is below\
+        \ the 85% threshold. \U0001F625\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Model\
+        \ validation', description='This component loads the model and evaluates its\
+        \ performance.')\n_parser.add_argument(\"--model-path\", dest=\"model_path\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --data-path\", dest=\"data_path\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parsed_args = vars(_parser.parse_args())\n\n_outputs = model_validation(**_parsed_args)\n"
+      image: mlops-pipeline:latest
+    inputs:
+      parameters:
+      - {name: data-preparation-Output}
+      - {name: model-training-Output}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.18
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"description": "This
+          component loads the model and evaluates its performance.", "implementation":
+          {"container": {"args": ["--model-path", {"inputValue": "model_path"}, "--data-path",
+          {"inputValue": "data_path"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def model_validation(model_path, data_path):\n    \"\"\"\n    This component
+          loads the model and evaluates its performance.\n    It prints the accuracy
+          and logs it as a metric to MLflow.\n    \"\"\"\n    import pandas as pd\n    from
+          sklearn.model_selection import train_test_split\n    from sklearn.metrics
+          import accuracy_score\n    import joblib\n    import mlflow\n    import
+          os\n\n    print(\"Starting model validation...\")\n    model = joblib.load(model_path)\n    df
+          = pd.read_csv(data_path)\n\n    X = df[[''age'', ''balance'', ''loan_status'',
+          ''campaign_calls'']]\n    y = df[''target'']\n\n    X_train, X_test, y_train,
+          y_test = train_test_split(X, y, test_size=0.2, random_state=42)\n\n    y_pred
+          = model.predict(X_test)\n    accuracy = accuracy_score(y_test, y_pred)\n\n    #
+          Report the final accuracy.\n    print(f\"Model Accuracy: {accuracy:.4f}\")\n    if
+          accuracy >= 0.85:\n        print(\"Model meets the 85% accuracy threshold.
+          \ud83c\udf89\")\n    else:\n        print(\"Model accuracy is below the
+          85% threshold. \ud83d\ude25\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Model
+          validation'', description=''This component loads the model and evaluates
+          its performance.'')\n_parser.add_argument(\"--model-path\", dest=\"model_path\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--data-path\",
+          dest=\"data_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = model_validation(**_parsed_args)\n"],
+          "image": "mlops-pipeline:latest"}}, "inputs": [{"name": "model_path", "type":
+          "String"}, {"name": "data_path", "type": "String"}], "name": "Model validation"}',
+        pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"data_path":
+          "{{inputs.parameters.data-preparation-Output}}", "model_path": "{{inputs.parameters.model-training-Output}}"}'}
+  - name: term-deposit-prediction-pipeline
+    inputs:
+      parameters:
+      - {name: mlflow_tracking_uri}
+    dag:
+      tasks:
+      - {name: data-preparation, template: data-preparation}
+      - name: model-training
+        template: model-training
+        dependencies: [data-preparation]
+        arguments:
+          parameters:
+          - {name: data-preparation-Output, value: '{{tasks.data-preparation.outputs.parameters.data-preparation-Output}}'}
+          - {name: mlflow_tracking_uri, value: '{{inputs.parameters.mlflow_tracking_uri}}'}
+      - name: model-validation
+        template: model-validation
+        dependencies: [data-preparation, model-training]
+        arguments:
+          parameters:
+          - {name: data-preparation-Output, value: '{{tasks.data-preparation.outputs.parameters.data-preparation-Output}}'}
+          - {name: model-training-Output, value: '{{tasks.model-training.outputs.parameters.model-training-Output}}'}
+  arguments:
+    parameters:
+    - {name: mlflow_tracking_uri, value: 'http://localhost:5000'}
+  serviceAccountName: pipeline-runner

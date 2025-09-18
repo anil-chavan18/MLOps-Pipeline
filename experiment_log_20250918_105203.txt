@@ -1,0 +1,5 @@
+timestamp: 20250918_105203
+model_type: LogisticRegression
+accuracy: 0.5225
+status: NEEDS_IMPROVEMENT
+features_used: ['age', 'balance', 'loan_status', 'campaign_calls', 'age_loan_ratio']
